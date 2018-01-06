@@ -436,6 +436,8 @@ def conv_backward_naive(dout, cache):
         for k in range(Hout):
             for l in range(Wout):
                 for n in range(N):
+                    ks = k * stride
+                    ls = l * stride
                     # --- common ---
                     # for every sample in the batch
                     # and every element in upstream gradient (single number)
@@ -444,13 +446,13 @@ def conv_backward_naive(dout, cache):
                     # --- dW ---
                     # multiple upstream element by window of size of params (C, HH, WW) over padded X
                     # and accumulate it in selected filter
-                    window = xpad[n, :, k:k+HH:stride, l:l+WW:stride]
+                    window = xpad[n, :, ks:ks+HH, ls:ls+WW]
                     dw[f, :, :, :] += window * upstream
 
                     # --- dX ---
                     # multiply it by by weights and reconstruct padded X (padded dx)
                     weights = w[f, :, :, :]
-                    dxpad[n, :, k:k+HH:stride, l:l+WW:stride] += weights * upstream
+                    dxpad[n, :, ks:ks+HH, ls:ls+WW] += weights * upstream
 
     # remove padding, bring back original size of dx
     dx = dxpad[:, :, pad:pad+H, pad:pad+W]
