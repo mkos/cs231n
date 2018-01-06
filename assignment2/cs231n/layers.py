@@ -523,7 +523,41 @@ def max_pool_backward_naive(dout, cache):
     ###########################################################################
     # TODO: Implement the max pooling backward pass                           #
     ###########################################################################
-    pass
+    
+    x, pool_param = cache
+    HH = pool_param['pool_height']
+    WW = pool_param['pool_width']
+    stride = pool_param['stride']
+
+    N, C, H, W = x.shape
+
+    Hout = np.int(1 + (H - HH) / stride)
+    Wout = np.int(1 + (W - WW) / stride)
+
+    dx = np.zeros_like(x)
+    
+    # since maxpool is defined using max(), gradient flows only through maximum
+    # element for each stride window.
+
+    for h in range(Hout):
+        for w in range(Wout):
+            hs = h * stride
+            ws = w * stride
+
+            for n in range(N):
+                for c in range(C):
+                    window = x[n, c, hs:hs+HH, ws:ws+WW]
+                    
+                    # since argmax() returns index of max element in unraveled
+                    # matrix, I'm using np.unravel_index() to translate it into
+                    # (h, w) pair
+                    h_max, w_max = np.unravel_index(np.argmax(window), window.shape)
+
+                    # indices on input size window of dx
+                    h_in, w_in = h * stride + h_max, w * stride + w_max    
+
+                    dx[n, c, h_in, w_in] = dout[n, c, h, w] 
+
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
