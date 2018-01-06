@@ -414,7 +414,47 @@ def conv_backward_naive(dout, cache):
     ###########################################################################
     # TODO: Implement the convolutional backward pass.                        #
     ###########################################################################
-    pass
+    x, w, b, conv_param = cache
+    pad, stride = conv_param['pad'], conv_param['stride']
+    N, C, H, W = x.shape
+    F, _, HH, WW = w.shape
+
+    Hout = np.int(1 + (H - HH + 2 * pad) / stride)
+    Wout = np.int(1 + (W - WW + 2 * pad) / stride)
+
+    xpad = np.pad(x, ((0,0),(0,0),(pad, pad),(pad, pad)), mode='constant', constant_values=0)
+
+    dx = np.zeros(x.shape)
+    dxpad = np.pad(dx, [(0,0), (0,0), (pad,pad), (pad,pad)], mode='constant', constant_values=0)
+
+    dw = np.zeros(w.shape)
+
+    # sum everything for every channel in upstream gradient
+    db = np.sum(dout, axis=(0, 2, 3))
+
+    for f in range(F):
+        for k in range(Hout):
+            for l in range(Wout):
+                for n in range(N):
+                    # --- common ---
+                    # for every sample in the batch
+                    # and every element in upstream gradient (single number)
+                    upstream = dout[n, f, k, l]
+
+                    # --- dW ---
+                    # multiple upstream element by window of size of params (C, HH, WW) over padded X
+                    # and accumulate it in selected filter
+                    window = xpad[n, :, k:k+HH:stride, l:l+WW:stride]
+                    dw[f, :, :, :] += window * upstream
+
+                    # --- dX ---
+                    # multiply it by by weights and reconstruct padded X (padded dx)
+                    weights = w[f, :, :, :]
+                    dxpad[n, :, k:k+HH:stride, l:l+WW:stride] += weights * upstream
+
+    # remove padding, bring back original size of dx
+    dx = dxpad[:, :, pad:pad+H, pad:pad+W]
+
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
